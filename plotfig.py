@@ -31,7 +31,6 @@ def pngkmeans(xvals,yvals,labels,filename):
         colors.append(generate_new_color(colors,pastel_factor=0.5))
     print(colors)
     plt.scatter(xvals,yvals, c=[colors[x][0] for x in labels],s=80)
-    plt.show()
     save_string = filename + '_kmeans_'+str(num_clusters)+'.png'
     fig.savefig(save_string)
 
