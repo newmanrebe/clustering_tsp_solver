@@ -139,6 +139,16 @@ def solve_tsp(matrix, depot):
     return []
 
 
+def cluster_test(file_path,num_clusters):
+  points = points_from_file(file_path)
+  X = [[p[1],p[2]] for p in points]
+  est = KMeans(n_clusters=num_clusters)
+  est.fit(X)
+  labels = est.labels_
+  CSV = [','.join([str(points[i][0]),str(points[i][1]),str(points[i][2]),str(labels[i])]) for i in range(len(labels))]
+  return CSV
+
+
 def cluster_tsp_vs_cp_tsp(file_path,num_clusters):
   print("SOLVING: {0} USING {1} CLUSTERS".format(file_path,num_clusters))
   optimal_start = clock()
@@ -189,9 +199,17 @@ def cluster_tsp_vs_cp_tsp(file_path,num_clusters):
 
 if __name__ == '__main__':
   CSV = ['num_cities,optimal_cost,optimal_solve_time,num_clusters,clustering_time,high_level_cluster_solution_time,cluster_solve_time,cluster_total_time,cluster_optimal_cost,cluser_optimality,speedup']
-  files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt','tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt']
+  files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt',
+           'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt','tsps/vm1084.txt',
+           'tsps/d1291.txt','tsps/d1655.txt',]
   for file_path in files:
-    for num_clusters in [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]:
+    for num_clusters in range(2,21):
       CSV.append(','.join([str(element) for element in cluster_tsp_vs_cp_tsp(file_path,num_clusters)]))
   with open('k_means_results.csv','w+') as csv_file:
     csv_file.write('\n'.join(CSV))
+  # CSV = ['point,X,Y,label']
+  # for file_path in files:
+  #   for num_clusters in [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]:
+  #     csv_file = '\n'.join(CSV + cluster_test(file_path,num_clusters))
+  #     with open('clusters/k_means_{0}_{1}.csv'.format(file_path[5:-4],num_clusters),'w+') as f:
+  #       f.write(csv_file)
