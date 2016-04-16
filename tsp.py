@@ -7,6 +7,7 @@ from time import clock
 from sklearn.cluster import KMeans
 from ortools.constraint_solver import pywrapcp
 
+
 class DistanceMatrix(object):
   def __init__(self,matrix, points, high_level=False, gamma=None):
     self.high_level = high_level
@@ -19,8 +20,10 @@ class DistanceMatrix(object):
   def distance(self, from_node, to_node):
     return self.matrix[from_node][to_node] if not self.high_level else self.matrix[from_node][to_node][0]
 
+
 def euclidean_distance(x,y):
   return sqrt(pow(y[0] - x[0], 2) + pow(y[1] - x[1], 2))
+
 
 def points_from_file(file_path):
   pattern = compile(r'\s*(\d+)\s+([0-9\.e\+]+)\s+([0-9\.e\+]+).*')
@@ -99,7 +102,7 @@ def load_matrices_from_labels(points, labels):
   return hl_distance_matrix, clusters
 
 
-def solve_tsp(matrix, depot):
+def cp_tsp_solve(matrix, depot):
   if matrix.num_points:
     # Set a global parameter.
     param = pywrapcp.RoutingParameters()
@@ -136,7 +139,7 @@ def solve_tsp(matrix, depot):
     else:
       print 'No solution found.'
   else:
-    return []
+    return 0.0,[]
 
 
 def cluster_test(file_path,num_clusters):
@@ -147,6 +150,51 @@ def cluster_test(file_path,num_clusters):
   labels = est.labels_
   CSV = [','.join([str(points[i][0]),str(points[i][1]),str(points[i][2]),str(labels[i])]) for i in range(len(labels))]
   return CSV
+
+
+def clustered_tsp_solve(points, num_clusters, clustering_algorithm=None, labels=None, basic=True):
+  clustering_start = clock()
+  
+  if clustering_algorithm and not labels:
+
+    X = [[p[1],p[2]] for p in points]
+    estimator = clustering_algorithm(n_clusters=num_clusters)
+    estimator.fit(X)
+    labels = estimator.labels_
+
+    clustering_time = clock() - clustering_start
+  elif labels and not clustering_algorithm:
+    labels = labels
+    clustering_time = 0.0
+  else:
+    print("The clustering TSP solver requires either a set of labels OR a clustering algorithm, but not both or neither.")
+    exit()
+
+  hl_matrix, clusters = load_matrices_from_labels(points,labels)
+  
+  C = 0.0
+  R = []
+
+  ll_cluster_solve_start = clock()
+  
+  for label,cluster in clusters.items():
+    R.append(cp_tsp_solve(cluster,0))
+    C += R[-1][0]
+  
+  ll_cluster_solve_time = clock() - ll_cluster_solve_start
+  hl_cluster_solve_start = clock()
+  
+  hl_cost, hl_route = cp_tsp_solve(hl_matrix,0)
+  
+  hl_cluster_solve_time = clock() - hl_cluster_solve_start
+  total_cluster_solve_time = clock() - clustering_start
+  C += hl_cost
+
+  if basic:
+    return C, R, hl_route
+  else:
+    return C, R, hl_route, (clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time)
+
 
 
 def cluster_tsp_vs_cp_tsp(file_path,num_clusters):
@@ -198,15 +246,28 @@ def cluster_tsp_vs_cp_tsp(file_path,num_clusters):
   return [matrix.num_points, optimal_cost, optimal_solve_time, num_clusters, clustering_time, high_level_cluster_solution_time, cluster_solve_time, cluster_total_time, C, optimal_cost / C, optimal_solve_time / cluster_total_time]
 
 if __name__ == '__main__':
-  CSV = ['num_cities,optimal_cost,optimal_solve_time,num_clusters,clustering_time,high_level_cluster_solution_time,cluster_solve_time,cluster_total_time,cluster_optimal_cost,cluser_optimality,speedup']
   files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt',
-           'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt','tsps/vm1084.txt',
-           'tsps/d1291.txt','tsps/d1655.txt',]
+           'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt']
   for file_path in files:
-    for num_clusters in range(2,21):
-      CSV.append(','.join([str(element) for element in cluster_tsp_vs_cp_tsp(file_path,num_clusters)]))
-  with open('k_means_results.csv','w+') as csv_file:
-    csv_file.write('\n'.join(CSV))
+    points = points_from_file(file_path)
+    for num_clusters in range(2,10):
+      
+      C, R, hl_route, times = clustered_tsp_solve(points, num_clusters, clustering_algorithm=KMeans, basic=False)
+      
+      clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time = times
+      print("CLUSTERING TSP SOLUTION({0},{7}) COST: {1}\n\tHIGH-LEVEL ROUTE: {2}\n\tTIME SPENT CLUSTERING: {3}\n\tTIME SPENT SOLVING LOW-LEVEL TSPS: {4}\n\tTIME SPENT SOLVING HIGH-LEVEL TSP: {5}\n\tTIME SPENT TOTAL: {6}\n".format(file_path, C, hl_route, clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time, num_clusters))
+
+
+  # CSV = ['num_cities,optimal_cost,optimal_solve_time,num_clusters,clustering_time,high_level_cluster_solution_time,cluster_solve_time,cluster_total_time,cluster_optimal_cost,cluser_optimality,speedup']
+  # files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt',
+  #          'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt','tsps/vm1084.txt',
+  #          'tsps/d1291.txt','tsps/d1655.txt',]
+  # for file_path in files:
+  #   for num_clusters in range(2,21):
+  #     CSV.append(','.join([str(element) for element in cluster_tsp_vs_cp_tsp(file_path,num_clusters)]))
+  # with open('k_means_results.csv','w+') as csv_file:
+  #   csv_file.write('\n'.join(CSV))
+
   # CSV = ['point,X,Y,label']
   # for file_path in files:
   #   for num_clusters in [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]:
