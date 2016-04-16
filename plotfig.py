@@ -38,7 +38,7 @@ def pngkmeans(xvals,yvals,labels,filename):
 xvals =[]
 yvals =[]
 labels =[]
-with open('/home/rebecca/Downloads/Telegram Desktop/clusters/k_means_a280_2.csv') as f:
+with open('test_results.csv') as f:
     reader = csv.reader(f)
     f.readline()
     for row in reader:
