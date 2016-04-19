@@ -5,6 +5,9 @@ from sys import maxsize
 from time import clock
 
 from sklearn.cluster import KMeans
+from sklearn.cluster import Birch
+from sklearn.cluster import DBSCAN
+from sklearn.cluster import AgglomerativeClustering
 from ortools.constraint_solver import pywrapcp
 
 
@@ -152,18 +155,17 @@ def cluster_test(file_path,num_clusters):
   return CSV
 
 
-def clustered_tsp_solve(points, num_clusters, clustering_algorithm=None, labels=None, basic=True):
+def clustered_tsp_solve(points, num_clusters, estimator=None, labels=None, basic=True):
   clustering_start = clock()
   
-  if clustering_algorithm and not labels:
+  if estimator and not labels:
 
     X = [[p[1],p[2]] for p in points]
-    estimator = clustering_algorithm(n_clusters=num_clusters)
     estimator.fit(X)
     labels = estimator.labels_
 
     clustering_time = clock() - clustering_start
-  elif labels and not clustering_algorithm:
+  elif labels and not estimator:
     labels = labels
     clustering_time = 0.0
   else:
@@ -246,19 +248,46 @@ def cluster_tsp_vs_cp_tsp(file_path,num_clusters):
   return [matrix.num_points, optimal_cost, optimal_solve_time, num_clusters, clustering_time, high_level_cluster_solution_time, cluster_solve_time, cluster_total_time, C, optimal_cost / C, optimal_solve_time / cluster_total_time]
 
 if __name__ == '__main__':
+  Results = {}
   files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt',
-           'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt']
+           'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt','tsps/vm1084.txt',
+           'tsps/d1291.txt','tsps/d1655.txt',]
   for file_path in files:
     points = points_from_file(file_path)
-    for num_clusters in range(2,10):
-      
-      C, R, hl_route, times = clustered_tsp_solve(points, num_clusters, clustering_algorithm=KMeans, basic=False)
-      
+    
+    optimal_start = clock()
+    optimal_cost, _ = cp_tsp_solve(load_matrix(points), 0)
+    optimal_solve_time = clock() - optimal_start
+
+    for num_clusters in range(2,21):
+
+      # KMeans clustering
+      # estimator = KMeans(n_clusters=num_clusters)
+
+      # Birch clustering
+      # estimator = Birch(n_clusters=num_clusters)
+
+      # DBSCAN clustering
+      # estimator = DBSCAN(eps=0.3, min_samples=10)
+
+      # Agglomerative
+      estimator = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
+
+      cluster_optimal_cost, R, hl_route, times = clustered_tsp_solve(points, num_clusters, estimator, basic=False)
       clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time = times
-      print("CLUSTERING TSP SOLUTION({0},{7}) COST: {1}\n\tHIGH-LEVEL ROUTE: {2}\n\tTIME SPENT CLUSTERING: {3}\n\tTIME SPENT SOLVING LOW-LEVEL TSPS: {4}\n\tTIME SPENT SOLVING HIGH-LEVEL TSP: {5}\n\tTIME SPENT TOTAL: {6}\n".format(file_path, C, hl_route, clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time, num_clusters))
+      Results[(file_path,num_clusters)] = ','.join(str(e) for e in [len(points), optimal_cost, optimal_solve_time, num_clusters, clustering_time, hl_cluster_solve_time, 
+                                                                   ll_cluster_solve_time, total_cluster_solve_time, cluster_optimal_cost, 
+                                                                   optimal_cost / cluster_optimal_cost, optimal_solve_time / total_cluster_solve_time])
+      print("CLUSTERING TSP SOLUTION({0},{7}) COST: {1}\n\tHIGH-LEVEL ROUTE: {2}\n\tTIME SPENT CLUSTERING: {3}\n\tTIME SPENT SOLVING LOW-LEVEL TSPS: {4}\n\tTIME SPENT SOLVING HIGH-LEVEL TSP: {5}\n\tTIME SPENT TOTAL: {6}\n".format(file_path, cluster_optimal_cost, hl_route, clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time, num_clusters))
+  print("Writing Output to CSV")
+  CSV = ['num_cities,optimal_cost,optimal_solve_time,num_clusters,clustering_time,high_level_cluster_solution_time,cluster_solve_time,cluster_total_time,cluster_optimal_cost,cluser_optimality,speedup']
+  for file_path in files:
+    for num_clusters in range(2,21):
+      CSV.append(Results[(file_path,num_clusters)])
+  with open('agglomerative_results.csv','w+') as csv_file:
+    csv_file.write('\n'.join(CSV))
 
-
-  # CSV = ['num_cities,optimal_cost,optimal_solve_time,num_clusters,clustering_time,high_level_cluster_solution_time,cluster_solve_time,cluster_total_time,cluster_optimal_cost,cluser_optimality,speedup']
+  
   # files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt',
   #          'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt','tsps/vm1084.txt',
   #          'tsps/d1291.txt','tsps/d1655.txt',]
