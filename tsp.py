@@ -271,7 +271,9 @@ if __name__ == '__main__':
       # estimator = DBSCAN(eps=0.3, min_samples=10)
 
       # Agglomerative
-      estimator = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
+      #estimator = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='ward')
+      #estimator = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='complete')  
+      estimator = AgglomerativeClustering(n_clusters=num_clusters, affinity='euclidean', linkage='average')
 
       cluster_optimal_cost, R, hl_route, times = clustered_tsp_solve(points, num_clusters, estimator, basic=False)
       clustering_time, ll_cluster_solve_time, hl_cluster_solve_time, total_cluster_solve_time = times
@@ -284,7 +286,7 @@ if __name__ == '__main__':
   for file_path in files:
     for num_clusters in range(2,21):
       CSV.append(Results[(file_path,num_clusters)])
-  with open('agglomerative_results.csv','w+') as csv_file:
+  with open('agglom_ave_results.csv','w+') as csv_file:
     csv_file.write('\n'.join(CSV))
 
   
