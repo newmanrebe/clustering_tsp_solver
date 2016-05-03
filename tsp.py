@@ -3,6 +3,7 @@ from math import sqrt
 from collections import defaultdict
 from sys import maxsize
 from time import clock
+from itertools import product
 
 from sklearn.cluster import KMeans
 from sklearn.cluster import Birch
@@ -155,6 +156,15 @@ def cluster_test(file_path,num_clusters):
   return CSV
 
 
+def compute_depots(clusters):
+  """
+  This is where we actually map the high-level TSP onto the final TSP solution
+  by figuring out which nodes should be used as start/endpoints of each cluster
+  which in turn determines the routes.
+  """
+  #TODO: Shit goes here
+
+
 def clustered_tsp_solve(points, num_clusters, estimator=None, labels=None, basic=True):
   clustering_start = clock()
   
@@ -247,7 +257,10 @@ def cluster_tsp_vs_cp_tsp(file_path,num_clusters):
   # num_cities,optimal_cost,optimal_solve_time,num_clusters,clustering_time,high_level_cluster_solution_time,cluster_solve_time,cluster_total_time,cluster_optimal_cost,cluser_optimality, speedup
   return [matrix.num_points, optimal_cost, optimal_solve_time, num_clusters, clustering_time, high_level_cluster_solution_time, cluster_solve_time, cluster_total_time, C, optimal_cost / C, optimal_solve_time / cluster_total_time]
 
-if __name__ == '__main__':
+def test_depot_calculation(clusters):
+  #TODO: Shit goes here
+
+def main():
   Results = {}
   files = ['tsps/berlin52.txt','tsps/bier127.txt','tsps/a280.txt','tsps/d493.txt',
            'tsps/rat575.txt','tsps/d657.txt','tsps/u724.txt','tsps/vm1084.txt',
@@ -305,3 +318,8 @@ if __name__ == '__main__':
   #     csv_file = '\n'.join(CSV + cluster_test(file_path,num_clusters))
   #     with open('clusters/k_means_{0}_{1}.csv'.format(file_path[5:-4],num_clusters),'w+') as f:
   #       f.write(csv_file)
+
+if __name__ == '__main__':
+  #main()
+  #run_k_mean_data_collection()
+  test_depot_calculation()
